@@ -1,0 +1,1750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Slow Professor — The Academic Wellbeing Game</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Special+Elite&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════
+   DESIGN TOKENS
+═══════════════════════════════════════════════ */
+:root {
+  --paper:   #f5edd8;  --paper2: #ede3c4;  --paper3: #e2d5ad;
+  --ink:     #1c1408;  --ink2:   #3a2e18;  --ink3:   #6a5538;
+  --green:   #2a5c2a;  --green2: #3a7a3a;  --green3: #6aaa6a;  --green4: #d0ecc8;
+  --red:     #8a1818;  --red2:   #c43030;  --red3:   #f07070;
+  --amber:   #8a5a08;  --amber2: #c07c18;  --amber3: #e8c060;
+  --blue:    #1a3060;  --blue2:  #2a50a0;  --blue3:  #b0cef8;
+  --purple:  #5a1878;  --purple2:#9040c0;
+  --teal:    #1a5a58;  --teal2:  #2a8a80;
+  --cork:    #b8906a;  --cork2:  #d4aa80;  --cork3:  #7a5830;
+  --bd:      rgba(90,58,18,.22);
+  --sh:      rgba(26,18,8,.14);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; background:var(--paper); }
+body { font-family:'Lora',serif; color:var(--ink); font-size:13px; overflow:hidden; }
+
+/* paper texture */
+body::before {
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:1;
+  opacity:.028;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.78' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Ruled paper lines */
+body::after {
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+  background-image: repeating-linear-gradient(0deg,
+    transparent, transparent 27px, rgba(90,58,18,.062) 28px);
+}
+
+::-webkit-scrollbar { width:5px; }
+::-webkit-scrollbar-thumb { background:var(--cork); border-radius:3px; }
+::-webkit-scrollbar-track { background:transparent; }
+
+/* ═══════════════════════════════════════════════
+   SCREEN SYSTEM
+═══════════════════════════════════════════════ */
+.screen { position:fixed; inset:0; display:none; overflow-y:auto; z-index:10; }
+.screen.active { display:flex; }
+
+/* ═══════════════════════════════════════════════
+   SETUP SCREEN
+═══════════════════════════════════════════════ */
+#setup {
+  flex-direction:column; align-items:center; justify-content:center;
+  padding:28px 16px; background:var(--paper);
+}
+
+.masthead { text-align:center; margin-bottom:22px; max-width:560px; width:100%; }
+.mast-rule {
+  height:2px;
+  background: repeating-linear-gradient(90deg, var(--ink) 0 8px, transparent 8px 14px);
+  margin:7px auto; max-width:500px;
+}
+.mast-title {
+  font-family:'Playfair Display',serif; font-size:3rem; font-weight:700;
+  color:var(--ink); letter-spacing:.02em; line-height:1.05;
+}
+.mast-sub {
+  font-family:'Special Elite',monospace; font-size:.78rem;
+  color:var(--ink3); letter-spacing:.18em; text-transform:uppercase; margin-top:3px;
+}
+.mast-quote {
+  font-family:'Lora',serif; font-style:italic; font-size:.82rem;
+  color:var(--ink3); margin-top:7px; line-height:1.5;
+}
+
+.setup-card {
+  background:var(--paper2); border:2px solid var(--bd); border-radius:2px;
+  padding:22px 26px; max-width:600px; width:100%;
+  box-shadow:4px 4px 0 var(--sh), 8px 8px 0 rgba(0,0,0,.04);
+  position:relative;
+}
+.setup-card::before {
+  content:'DEPARTMENT OF ACADEMIC AFFAIRS — FACULTY REGISTRATION';
+  position:absolute; top:-10px; left:50%; transform:translateX(-50%);
+  font-family:'Special Elite',monospace; font-size:.58rem; letter-spacing:.12em;
+  background:var(--paper2); padding:0 8px; color:var(--ink3); white-space:nowrap;
+}
+
+.sh {
+  font-family:'Special Elite',monospace; font-size:.65rem; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--green);
+  border-bottom:1px solid var(--bd); padding-bottom:4px; margin-bottom:10px; margin-top:14px;
+}
+.sh:first-of-type { margin-top:0; }
+
+/* player rows */
+.p-grid-header {
+  display:grid; grid-template-columns:26px 1fr 130px 100px 86px;
+  gap:7px; margin-bottom:5px;
+}
+.p-grid-header span {
+  font-family:'Special Elite',monospace; font-size:.58rem; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--ink3); padding-left:2px;
+}
+.p-row { display:grid; grid-template-columns:26px 1fr 130px 100px 86px; gap:7px; align-items:center; margin-bottom:6px; }
+.p-num { font-family:'Special Elite',monospace; font-size:.9rem; color:var(--cork2); text-align:center; }
+.p-row input, .p-row select {
+  width:100%; padding:5px 7px; background:var(--paper); border:1px solid var(--bd);
+  border-radius:1px; font-family:'Special Elite',monospace; font-size:.68rem;
+  color:var(--ink); outline:none; appearance:none;
+}
+.p-row input:focus, .p-row select:focus { border-color:var(--green); }
+.p-row input:disabled, .p-row select:disabled { opacity:.3; }
+
+/* win condition box */
+.win-callout {
+  background: linear-gradient(135deg, var(--green4), #edf8e8);
+  border:2px solid var(--green2); border-radius:2px;
+  padding:10px 14px; margin:12px 0;
+  display:flex; gap:10px; align-items:flex-start;
+}
+.win-callout-icon { font-size:1.4rem; flex-shrink:0; margin-top:2px; }
+.win-callout-text { font-family:'Lora',serif; font-size:.8rem; color:var(--green); line-height:1.55; }
+.win-callout-text strong { font-family:'Special Elite',monospace; letter-spacing:.05em; }
+
+.opts { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.og label {
+  display:block; font-family:'Special Elite',monospace; font-size:.62rem;
+  letter-spacing:.08em; color:var(--ink3); margin-bottom:3px;
+}
+.og select, .og input[type=range] {
+  width:100%; padding:5px 7px; background:var(--paper); border:1px solid var(--bd);
+  border-radius:1px; font-family:'Special Elite',monospace; font-size:.68rem;
+  color:var(--ink); outline:none; appearance:none;
+}
+.og input[type=range] { padding:0; cursor:pointer; accent-color:var(--green); margin-top:4px; }
+.rv { font-family:'Special Elite',monospace; font-size:.7rem; color:var(--green); font-weight:bold; }
+
+.start-btn {
+  display:block; width:100%; margin-top:18px; padding:13px; text-align:center;
+  background:var(--green); color:var(--paper); border:none; cursor:pointer;
+  font-family:'Playfair Display',serif; font-size:1.05rem; font-style:italic;
+  letter-spacing:.05em; box-shadow:3px 3px 0 var(--green2); transition:all .18s;
+}
+.start-btn:hover {
+  background:var(--green2); transform:translate(-1px,-1px); box-shadow:4px 4px 0 var(--green);
+}
+
+/* ═══════════════════════════════════════════════
+   GAME SCREEN — LAYOUT
+═══════════════════════════════════════════════ */
+#game {
+  flex-direction:column; overflow:hidden;
+  background:var(--cork);
+  background-image:
+    radial-gradient(ellipse at 18% 55%, rgba(170,130,75,.35), transparent 52%),
+    radial-gradient(ellipse at 82% 22%, rgba(135,98,42,.28), transparent 50%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.6' numOctaves='3'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='.06'/%3E%3C/svg%3E");
+}
+
+/* topbar */
+#topbar {
+  background:var(--ink); color:var(--paper); height:42px; flex-shrink:0;
+  display:flex; align-items:center; padding:0 14px; gap:14px;
+  border-bottom:3px solid var(--green2); z-index:20; position:relative;
+}
+.tb-logo { font-family:'Playfair Display',serif; font-size:1.05rem; font-weight:700; letter-spacing:.03em; }
+.tb-week { font-family:'Special Elite',monospace; font-size:.68rem; letter-spacing:.1em; color:var(--amber3); }
+.tb-sp { flex:1; }
+.tb-btn {
+  font-family:'Special Elite',monospace; font-size:.6rem; letter-spacing:.08em;
+  padding:4px 10px; background:transparent; color:rgba(245,237,216,.75);
+  border:1px solid rgba(245,237,216,.25); cursor:pointer; transition:all .15s;
+}
+.tb-btn:hover { background:rgba(245,237,216,.1); color:var(--amber3); border-color:var(--amber3); }
+
+/* three-column main */
+#gmain {
+  flex:1; display:grid; grid-template-columns:216px 1fr 222px; overflow:hidden; min-height:0;
+}
+
+/* ───────── LEFT: ROSTER ───────── */
+#roster {
+  background:rgba(22,14,4,.6); border-right:2px solid rgba(90,58,18,.38);
+  overflow-y:auto; padding:8px 7px; display:flex; flex-direction:column; gap:6px;
+}
+.r-head {
+  font-family:'Special Elite',monospace; font-size:.6rem; letter-spacing:.12em; color:var(--cork2);
+  text-align:center; text-transform:uppercase;
+  padding-bottom:5px; border-bottom:1px solid rgba(200,160,90,.22); margin-bottom:2px;
+}
+
+/* player card */
+.pc {
+  background:var(--paper2); border:2px solid var(--bd); border-radius:2px;
+  padding:7px 9px; position:relative; transition:border-color .2s, box-shadow .2s;
+}
+.pc.active {
+  border-color:var(--green);
+  box-shadow:0 0 0 2px var(--green), 2px 2px 0 var(--green2);
+}
+.pc.burnt { border-color:var(--red2); }
+.pc-colbar { height:3px; border-radius:1px; margin-bottom:5px; }
+.pc-name { font-family:'Playfair Display',serif; font-size:.82rem; font-weight:700; color:var(--ink); }
+.pc-rank {
+  font-family:'Special Elite',monospace; font-size:.58rem; letter-spacing:.05em;
+  color:var(--ink3); margin-bottom:5px;
+}
+
+/* stat bars */
+.srow { display:flex; align-items:center; gap:4px; margin-bottom:2px; }
+.sl { font-family:'Special Elite',monospace; font-size:.54rem; color:var(--ink3); min-width:32px; }
+.sb { flex:1; height:4px; background:rgba(90,58,18,.12); border-radius:2px; overflow:hidden; }
+.sf { height:100%; border-radius:2px; transition:width .45s ease; }
+.sv { font-family:'Special Elite',monospace; font-size:.54rem; color:var(--ink3); min-width:20px; text-align:right; }
+
+/* stress bar — special gradient */
+.sf-stress { background:linear-gradient(90deg,#4aaa4a 0%,#c09020 52%,#c43030 80%); }
+
+/* stress badge */
+.sbadge {
+  display:inline-block; padding:1px 5px; border-radius:1px;
+  font-family:'Special Elite',monospace; font-size:.56rem; letter-spacing:.03em;
+}
+.sb-ok   { background:rgba(90,154,90,.18); color:var(--green2); }
+.sb-warn { background:rgba(192,120,24,.18); color:var(--amber2); }
+.sb-high { background:rgba(196,48,48,.18); color:var(--red2); }
+.sb-crit { background:var(--red2); color:#fff; animation:blink 1s ease infinite; }
+@keyframes blink { 0%,100%{opacity:1;} 50%{opacity:.55;} }
+
+.pc-pts { font-family:'Special Elite',monospace; font-size:.6rem; color:var(--amber2); text-align:right; margin-top:3px; }
+.pc-score { font-family:'Special Elite',monospace; font-size:.62rem; color:var(--green2); text-align:right; }
+.pc-badge {
+  position:absolute; top:-8px; font-family:'Special Elite',monospace;
+  font-size:.54rem; letter-spacing:.05em; padding:1px 5px;
+}
+.pc-badge-turn { right:5px; background:var(--green); color:var(--paper); }
+.pc-badge-cpu  { left:5px; background:var(--amber); color:var(--paper); }
+.pc-badge-burnt{ right:5px; background:var(--red2); color:#fff; }
+.pc-badge-rec  { right:5px; background:var(--amber2); color:var(--paper); }
+
+/* ladder */
+.ladder-wrap {
+  margin-top:8px; background:rgba(22,14,4,.36);
+  border:1px solid rgba(200,160,90,.22); border-radius:2px; padding:8px 9px;
+}
+.l-head {
+  font-family:'Special Elite',monospace; font-size:.58rem; letter-spacing:.1em;
+  color:var(--cork2); text-align:center; margin-bottom:6px;
+}
+.l-rung {
+  display:flex; align-items:center; gap:5px; padding:3px 6px;
+  border:1px solid transparent; border-radius:1px; transition:all .2s;
+}
+.l-rung.has { background:rgba(245,237,216,.1); border-color:rgba(200,160,90,.2); }
+.lr-label {
+  font-family:'Special Elite',monospace; font-size:.57rem; letter-spacing:.04em;
+  color:var(--cork2); min-width:86px;
+}
+.lr-dots { display:flex; flex-wrap:wrap; gap:3px; }
+.lr-dot { width:9px; height:9px; border-radius:50%; border:1px solid rgba(245,237,216,.3); }
+
+/* ───────── CENTER ───────── */
+#center { overflow-y:auto; padding:10px; display:flex; flex-direction:column; gap:8px; min-height:0; }
+
+/* active player banner */
+#banner {
+  background:var(--paper); border:2px solid var(--bd); border-radius:2px;
+  padding:9px 13px; display:grid; grid-template-columns:1fr auto;
+  gap:8px; align-items:center; box-shadow:2px 2px 0 var(--sh);
+}
+.bn-name { font-family:'Playfair Display',serif; font-size:1.08rem; font-weight:700; }
+.bn-rank { font-family:'Special Elite',monospace; font-size:.65rem; letter-spacing:.08em; color:var(--ink3); margin-top:1px; }
+.bn-status { font-size:.73rem; font-style:italic; margin-top:3px; }
+.bn-right { text-align:right; }
+.bn-wk { font-family:'Special Elite',monospace; font-size:.62rem; color:var(--ink3); }
+.bn-picks { font-family:'Special Elite',monospace; font-size:.7rem; color:var(--green); font-weight:bold; margin-top:2px; }
+.promo-btn {
+  margin-top:5px; font-family:'Special Elite',monospace; font-size:.6rem; letter-spacing:.07em;
+  padding:4px 9px; background:var(--blue); color:var(--paper); border:none; cursor:pointer;
+  transition:all .15s; white-space:nowrap; display:block; width:100%;
+}
+.promo-btn:hover { background:var(--blue2); }
+.promo-btn:disabled { opacity:.28; cursor:not-allowed; }
+
+/* section divider */
+.sec-div {
+  font-family:'Special Elite',monospace; font-size:.64rem; letter-spacing:.12em;
+  color:rgba(245,237,216,.7); text-transform:uppercase; text-align:center;
+  display:flex; align-items:center; gap:8px;
+}
+.sec-div::before, .sec-div::after {
+  content:''; flex:1; height:1px; background:rgba(245,237,216,.28);
+}
+
+/* task grid — 3 columns */
+#tgrid { display:grid; grid-template-columns:repeat(3,1fr); gap:7px; }
+
+/* task card */
+.tc {
+  background:var(--paper); border:2px solid var(--bd); border-radius:2px;
+  padding:9px 10px; cursor:pointer; position:relative;
+  box-shadow:2px 2px 0 var(--sh), 3px 3px 0 rgba(0,0,0,.04);
+  transition:transform .16s, box-shadow .16s, border-color .14s, background .14s;
+  /* pin tack shadow */
+}
+.tc::before {
+  content:''; position:absolute; top:-5px; left:50%; transform:translateX(-50%);
+  width:10px; height:10px; border-radius:50%; background:var(--cork2);
+  box-shadow:0 1px 3px rgba(0,0,0,.3); border:1px solid var(--cork3);
+}
+.tc:hover:not(.dis):not(.sel) {
+  transform:translate(-1px,-2px) rotate(-.5deg);
+  box-shadow:3px 4px 0 var(--sh), 5px 6px 0 rgba(0,0,0,.06);
+  border-color:var(--green2);
+}
+.tc.sel {
+  border-color:var(--green); background:var(--green4);
+  box-shadow:0 0 0 2px var(--green), 2px 2px 0 var(--green2);
+  transform:translate(-1px,-1px);
+}
+.tc.sel::before { background:var(--green); }
+.tc.dis { opacity:.38; cursor:not-allowed; filter:grayscale(.5); }
+.tc.holi { border-color:var(--amber); }
+.tc.holi::before { background:var(--amber2); }
+.tc.holi.sel { background:#fdf5d8; border-color:var(--amber2); box-shadow:0 0 0 2px var(--amber2); }
+
+.tc-type {
+  font-family:'Special Elite',monospace; font-size:.55rem; letter-spacing:.1em;
+  text-transform:uppercase; margin-bottom:3px;
+}
+.tc-title {
+  font-family:'Playfair Display',serif; font-size:.88rem; font-weight:700;
+  color:var(--ink); margin-bottom:3px; line-height:1.2;
+}
+.tc-desc {
+  font-family:'Lora',serif; font-size:.7rem; font-style:italic;
+  color:var(--ink3); margin-bottom:7px; line-height:1.35;
+}
+.tc-tags { display:flex; flex-wrap:wrap; gap:3px; margin-bottom:6px; }
+.tag {
+  font-family:'Special Elite',monospace; font-size:.53rem; letter-spacing:.03em;
+  padding:1px 5px; border-radius:1px;
+}
+.tc-stress-row { display:flex; align-items:center; gap:5px; }
+.stress-pip { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+.sp-lo { background:var(--green3); }
+.sp-md { background:var(--amber2); }
+.sp-hi { background:var(--red2); }
+.sp-neg { background:var(--blue2); }
+.tc-stress-txt { font-family:'Special Elite',monospace; font-size:.58rem; }
+.tc-check {
+  position:absolute; top:6px; right:6px; width:17px; height:17px;
+  border-radius:50%; background:var(--green); color:#fff;
+  display:none; align-items:center; justify-content:center;
+  font-size:.7rem; font-weight:bold;
+}
+.tc.sel .tc-check { display:flex; }
+
+/* confirm button */
+#confirm {
+  width:100%; padding:11px; background:var(--green); color:var(--paper); border:none; cursor:pointer;
+  font-family:'Playfair Display',serif; font-size:.95rem; font-style:italic; letter-spacing:.05em;
+  box-shadow:3px 3px 0 var(--green2); transition:all .16s;
+}
+#confirm:hover { background:var(--green2); transform:translate(-1px,-1px); box-shadow:4px 4px 0 var(--green); }
+#confirm:disabled { opacity:.28; cursor:not-allowed; transform:none; box-shadow:none; }
+
+/* ───────── RIGHT: INFO PANEL ───────── */
+#right {
+  background:rgba(22,14,4,.52); border-left:2px solid rgba(90,58,18,.38);
+  overflow-y:auto; padding:8px 9px; display:flex; flex-direction:column; gap:8px;
+}
+.panel {
+  background:var(--paper2); border:1px solid var(--bd); border-radius:2px; padding:9px;
+}
+.panel-title {
+  font-family:'Special Elite',monospace; font-size:.6rem; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--green);
+  border-bottom:1px solid var(--bd); padding-bottom:3px; margin-bottom:7px;
+}
+
+/* event log */
+#log { max-height:200px; overflow-y:auto; display:flex; flex-direction:column; gap:2px; }
+.le {
+  font-family:'Lora',serif; font-size:.68rem; line-height:1.3;
+  padding:2px 5px; border-left:2px solid var(--bd); color:var(--ink2);
+}
+.le.g { border-color:var(--green2); color:var(--green); }
+.le.b { border-color:var(--red); color:var(--red); }
+.le.i { border-color:var(--blue2); color:var(--blue2); }
+.le.w { border-color:var(--amber2); color:var(--amber); }
+.le.c { border-color:var(--red2); color:var(--red2); font-weight:bold; }
+
+/* leaderboard */
+.lb-row {
+  display:flex; align-items:center; gap:5px; padding:3px 0;
+  border-bottom:1px solid var(--bd);
+  font-family:'Special Elite',monospace; font-size:.62rem;
+}
+.lb-row:last-child { border:none; }
+
+/* promotion requirements */
+.promo-req-text {
+  font-family:'Special Elite',monospace; font-size:.6rem; line-height:1.75;
+  color:var(--ink2); white-space:pre;
+}
+
+/* milestones */
+.ms { 
+  font-family:'Special Elite',monospace; font-size:.6rem; letter-spacing:.03em;
+  padding:2px 5px; color:var(--amber2); border-left:2px solid var(--amber2); margin-bottom:3px;
+}
+
+/* score panel */
+.score-row {
+  display:flex; justify-content:space-between; align-items:center;
+  font-family:'Special Elite',monospace; font-size:.62rem; padding:2px 0;
+  border-bottom:1px solid rgba(90,58,18,.1);
+}
+.score-row:last-child { border:none; }
+.score-key { color:var(--ink3); }
+.score-val { color:var(--green2); font-weight:bold; }
+
+/* mandated card — pinned, locked */
+.tc.mandated {
+  border-color:var(--red) !important; cursor:not-allowed !important;
+  opacity:1 !important; filter:none !important;
+}
+.tc.mandated::before { background:var(--red2) !important; }
+.tc.mandated.sel { background:#fdeaea; box-shadow:0 0 0 2px var(--red2), 2px 2px 0 var(--red); }
+.mandated-stamp {
+  position:absolute; top:6px; right:6px;
+  font-family:'Special Elite',monospace; font-size:.48rem; letter-spacing:.06em;
+  background:var(--red2); color:#fff; padding:2px 5px; border-radius:1px;
+  pointer-events:none;
+}
+
+/* burnout overlay on centre panel */
+#burnout-overlay {
+  position:absolute; inset:0; z-index:50;
+  background:rgba(26,8,8,.82);
+  display:none; flex-direction:column; align-items:center; justify-content:center;
+  gap:10px;
+  backdrop-filter:blur(3px);
+}
+#burnout-overlay.show { display:flex; }
+.bo-icon { font-size:3rem; }
+.bo-title {
+  font-family:'Playfair Display',serif; font-size:1.4rem; font-weight:700;
+  color:var(--red2); text-align:center;
+}
+.bo-sub {
+  font-family:'Special Elite',monospace; font-size:.62rem; letter-spacing:.08em;
+  color:var(--paper3); text-align:center; line-height:2;
+}
+.bo-next {
+  font-family:'Playfair Display',serif; font-style:italic; font-size:.85rem;
+  color:var(--paper3); padding:10px 24px; background:var(--red2); border:none;
+  cursor:pointer; margin-top:6px; box-shadow:3px 3px 0 var(--red); transition:all .16s;
+}
+.bo-next:hover { background:var(--red); transform:translate(-1px,-1px); }
+
+/* profile badge on player card */
+.pc-profile {
+  font-family:'Special Elite',monospace; font-size:.54rem; letter-spacing:.05em;
+  color:var(--blue2); margin-top:1px; margin-bottom:2px;
+}
+
+/* type colours */
+.tp-teaching   { background:rgba(26,48,96,.13);  color:var(--blue2); }
+.tp-research   { background:rgba(42,92,42,.13);  color:var(--green2); }
+.tp-grant      { background:rgba(138,90,8,.13);  color:var(--amber2); }
+.tp-admin      { background:rgba(90,58,18,.13);  color:var(--ink3); }
+.tp-super      { background:rgba(90,28,110,.12); color:var(--purple2); }
+.tp-outreach   { background:rgba(24,100,90,.14); color:var(--teal2); }
+.tp-holiday    { background:rgba(200,160,80,.18); color:var(--amber2); }
+.tp-mentoring  { background:rgba(42,92,42,.13);  color:var(--green2); }
+
+/* ═══════════════════════════════════════════════
+   OVERLAY
+═══════════════════════════════════════════════ */
+.overlay {
+  position:fixed; inset:0; background:rgba(22,14,4,.85); z-index:600;
+  display:none; align-items:center; justify-content:center;
+  backdrop-filter:blur(5px);
+}
+.overlay.show { display:flex; }
+.ov-card {
+  background:var(--paper); border:3px solid var(--bd); border-radius:2px;
+  padding:26px 30px; max-width:430px; width:92%; text-align:center;
+  box-shadow:6px 6px 0 var(--sh);
+  animation:stamp .28s cubic-bezier(.34,1.4,.64,1);
+}
+@keyframes stamp {
+  from { opacity:0; transform:scale(.72) rotate(-1.5deg); }
+  to   { opacity:1; transform:scale(1)  rotate(0deg); }
+}
+.ov-icon    { font-size:2.4rem; display:block; margin-bottom:5px; }
+.ov-title   { font-family:'Playfair Display',serif; font-size:1.5rem; font-weight:700; margin-bottom:6px; }
+.ov-sub     { font-family:'Lora',serif; font-style:italic; font-size:.88rem; color:var(--ink3); margin-bottom:12px; line-height:1.5; }
+.ov-body    {
+  background:var(--paper2); border:1px solid var(--bd);
+  padding:9px 12px; font-family:'Special Elite',monospace; font-size:.74rem;
+  color:var(--ink2); text-align:left; line-height:1.85; white-space:pre-wrap;
+  margin-bottom:14px;
+}
+.ov-btns    { display:flex; gap:9px; justify-content:center; flex-wrap:wrap; }
+.ov-btn {
+  font-family:'Playfair Display',serif; font-size:.9rem; font-style:italic;
+  padding:9px 24px; background:var(--green); color:var(--paper); border:none; cursor:pointer;
+  letter-spacing:.04em; box-shadow:3px 3px 0 var(--green2); transition:all .16s;
+}
+.ov-btn:hover { background:var(--green2); transform:translate(-1px,-1px); }
+.ov-btn.red   { background:var(--red);   box-shadow:3px 3px 0 var(--red2); }
+.ov-btn.red:hover { background:var(--red2); }
+.ov-btn.amber { background:var(--amber); box-shadow:3px 3px 0 var(--amber2); }
+.ov-btn.amber:hover { background:var(--amber2); }
+
+/* ═══════════════════════════════════════════════
+   WIN / RESULTS SCREEN
+═══════════════════════════════════════════════ */
+#win {
+  flex-direction:column; align-items:center; justify-content:center;
+  padding:28px 16px; background:var(--paper);
+  background-image: repeating-linear-gradient(0deg, transparent, transparent 27px, rgba(90,58,18,.062) 28px);
+}
+.diploma {
+  background:var(--paper2); border:4px double var(--amber2);
+  padding:30px 36px; max-width:580px; width:100%; text-align:center;
+  box-shadow:8px 8px 0 var(--sh);
+}
+.dip-ornament { font-size:1rem; color:var(--amber2); letter-spacing:.5em; display:block; margin:5px 0; }
+.dip-univ { font-family:'Special Elite',monospace; font-size:.68rem; letter-spacing:.2em; color:var(--ink3); }
+.dip-cert { font-family:'Lora',serif; font-style:italic; font-size:.88rem; color:var(--ink3); margin:6px 0; }
+.dip-winner { font-family:'Playfair Display',serif; font-size:2rem; font-weight:700; color:var(--ink); margin:6px 0; }
+.dip-why { font-family:'Playfair Display',serif; font-size:1rem; font-style:italic; color:var(--green); margin-bottom:14px; }
+.dip-table { width:100%; border-collapse:collapse; margin:10px 0; text-align:left; }
+.dip-table th {
+  font-family:'Special Elite',monospace; font-size:.6rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--ink3); border-bottom:1px solid var(--bd);
+  padding:3px 6px;
+}
+.dip-table td {
+  font-family:'Lora',serif; font-size:.78rem; color:var(--ink2);
+  padding:3px 6px; border-bottom:1px solid rgba(90,58,18,.08);
+}
+.dip-table tr.winner td { color:var(--green); font-weight:bold; }
+.dip-sep { border:none; border-top:1px solid var(--bd); margin:10px 0; }
+.dip-quote { font-family:'Lora',serif; font-style:italic; font-size:.78rem; color:var(--ink3); margin-top:8px; }
+.win-start-btn {
+  max-width:300px; margin-top:18px; display:block; width:100%; padding:12px;
+  text-align:center; background:var(--green); color:var(--paper);
+  border:none; cursor:pointer; font-family:'Playfair Display',serif;
+  font-size:.95rem; font-style:italic; letter-spacing:.05em;
+  box-shadow:3px 3px 0 var(--green2); transition:all .18s;
+}
+.win-start-btn:hover { background:var(--green2); transform:translate(-1px,-1px); }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     SETUP SCREEN
+══════════════════════════════════════════ -->
+<div id="setup" class="screen active">
+  <div class="masthead">
+    <div class="mast-rule"></div>
+    <div class="mast-title">Slow Professor</div>
+    <div class="mast-sub">The Academic Wellbeing Simulation</div>
+    <div class="mast-quote">"The goal is not to reach the top.<br>The goal is to arrive — and still be standing."</div>
+    <div class="mast-rule"></div>
+  </div>
+
+  <div class="setup-card">
+    <div class="win-callout">
+      <div class="win-callout-icon">🧘</div>
+      <div class="win-callout-text">
+        <strong>How to Win:</strong> The player with the <strong>lowest mean stress</strong> over the whole game wins —
+        regardless of academic rank. You can win as an Assistant Professor.
+        Rank earns bonus points, but burning out costs them.
+        <em>Slow and steady wins the race.</em>
+      </div>
+    </div>
+
+    <div class="sh">Players</div>
+    <div class="p-grid-header">
+      <span></span><span>Name</span><span>Profile</span><span>Type</span><span>Colour</span>
+    </div>
+    <div id="pslots"></div>
+
+    <div class="sh">Game Options</div>
+    <div class="opts">
+      <div class="og">
+        <label>NUMBER OF PLAYERS</label>
+        <select id="nump" onchange="buildSlots()">
+          <option value="1">1 Player</option>
+          <option value="2" selected>2 Players</option>
+          <option value="3">3 Players</option>
+          <option value="4">4 Players</option>
+        </select>
+      </div>
+      <div class="og">
+        <label>GAME LENGTH</label>
+        <select id="glen">
+          <option value="40">Short — 40 weeks</option>
+          <option value="80" selected>Standard — 80 weeks</option>
+          <option value="120">Long — 120 weeks</option>
+          <option value="0">Unlimited (reach Full Prof)</option>
+        </select>
+      </div>
+      <div class="og">
+        <label>TASK CARDS OFFERED  <span class="rv" id="trv">6</span></label>
+        <input type="range" id="tpw" min="4" max="8" value="6" oninput="document.getElementById('trv').textContent=this.value">
+      </div>
+      <div class="og">
+        <label>MANDATED CARDS  <span class="rv" id="mrv">1</span></label>
+        <input type="range" id="mpw" min="0" max="3" value="1" oninput="document.getElementById('mrv').textContent=this.value">
+        <div style="font-family:'Lora',serif;font-style:italic;font-size:.58rem;color:var(--ink3);margin-top:3px;line-height:1.4;">University-required tasks that cannot be skipped (e.g. marking, admin).</div>
+      </div>
+      <div class="og">
+        <label>PICKS PER TURN  <span class="rv" id="prv">2</span></label>
+        <input type="range" id="ppw" min="1" max="3" value="2" oninput="document.getElementById('prv').textContent=this.value">
+      </div>
+    </div>
+
+    <button class="start-btn" onclick="startGame()">Begin the Academic Journey →</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     GAME SCREEN
+══════════════════════════════════════════ -->
+<div id="game" class="screen">
+
+  <div id="topbar">
+    <span class="tb-logo">Slow Professor</span>
+    <span class="tb-week" id="tbweek">Week 1</span>
+    <div class="tb-sp"></div>
+    <button class="tb-btn" onclick="openHelp()">? Help</button>
+    <button class="tb-btn" onclick="backToSetup()">↩ New Game</button>
+  </div>
+
+  <div id="gmain">
+
+    <!-- LEFT -->
+    <div id="roster">
+      <div class="r-head">Faculty Roster</div>
+      <div id="roster-cards"></div>
+      <div class="ladder-wrap">
+        <div class="l-head">ACADEMIC LADDER</div>
+        <div id="ladder"></div>
+      </div>
+    </div>
+
+    <!-- CENTER -->
+    <div id="center" style="position:relative;">
+      <div id="burnout-overlay">
+        <div class="bo-icon">🔥</div>
+        <div class="bo-title" id="bo-title">Burned Out</div>
+        <div class="bo-sub" id="bo-sub">Recovery in progress</div>
+        <button class="bo-next" id="bo-next-btn" onclick="advanceBurnout()">End recovery week →</button>
+      </div>
+      <div id="banner"></div>
+      <div class="sec-div">Weekly Task Cards</div>
+      <div id="tgrid"></div>
+      <button id="confirm" disabled onclick="confirmTurn()">Select tasks to continue</button>
+    </div>
+
+    <!-- RIGHT -->
+    <div id="right">
+      <div class="panel">
+        <div class="panel-title">🏆 Scoring</div>
+        <div id="scoring-explainer" style="font-family:'Lora',serif;font-style:italic;font-size:.72rem;color:var(--ink3);line-height:1.5;margin-bottom:6px;">
+          Win = lowest mean stress.<br>Rank earns bonus pts. Burnouts cost pts.
+        </div>
+        <div id="scoreboard"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Event Log</div>
+        <div id="log"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Leaderboard</div>
+        <div id="lb"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Promotion Requirements</div>
+        <div id="promo-req"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Milestones</div>
+        <div id="milestones"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     WIN SCREEN
+══════════════════════════════════════════ -->
+<div id="win" class="screen">
+  <div class="diploma" id="diploma"></div>
+  <button class="win-start-btn" onclick="backToSetup()">Play Again →</button>
+</div>
+
+<!-- ══════════════════════════════════════════
+     OVERLAY
+══════════════════════════════════════════ -->
+<div class="overlay" id="ov">
+  <div class="ov-card">
+    <span class="ov-icon" id="ov-icon"></span>
+    <div class="ov-title" id="ov-title"></div>
+    <div class="ov-sub"   id="ov-sub"></div>
+    <div class="ov-body"  id="ov-body"></div>
+    <div class="ov-btns"  id="ov-btns"></div>
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════
+   CONSTANTS
+════════════════════════════════════════════════════ */
+const RANKS = [
+  { id:'a1', label:'Assistant Professor I',   short:'Asst. Prof I',   rankBonus:0 },
+  { id:'a2', label:'Assistant Professor II',  short:'Asst. Prof II',  rankBonus:6 },
+  { id:'o1', label:'Associate Professor I',   short:'Assoc. Prof I',  rankBonus:14 },
+  { id:'o2', label:'Associate Professor II',  short:'Assoc. Prof II', rankBonus:24 },
+  { id:'fp', label:'Full Professor',          short:'Full Professor', rankBonus:36 },
+];
+
+// Stats required at NEXT rank (not current)
+const PROMO_REQ = {
+  a2: { teaching:12, pubs:6 },
+  o1: { teaching:20, research:22, grants:14, pubs:16 },
+  o2: { teaching:28, research:42, grants:28, pubs:30 },
+  fp: { teaching:34, research:65, grants:45, pubs:50, outreach:20 },
+};
+
+const COLORS  = ['#2a5a8a','#7a2a2a','#2a7a40','#7a5808','#5a2a7a','#1a6a6a'];
+const CNAMES  = ['Blue','Crimson','Forest','Ochre','Violet','Teal'];
+const PNAMES  = ['Dr. Smith','Prof. Jones','Dr. Chen','Prof. García'];
+
+const STAT_KEYS   = ['teaching','research','grants','outreach','pubs'];
+const STAT_LABELS = { teaching:'Teach', research:'Res.', grants:'Grants', outreach:'Outrch', pubs:'Pubs' };
+const STAT_COLORS = { teaching:'#2a50a0', research:'#3a7a3a', grants:'#c07c18', outreach:'#1a7a6a', pubs:'#7a3a9a' };
+
+/* ════════════════════════════════════════════════════
+   TASK DEFINITIONS
+════════════════════════════════════════════════════ */
+const TASKS = [
+  // TEACHING
+  { id:'t1', type:'teaching',  title:'Intro Lecture',
+    desc:'200 students, endless questions. Office hours overflow.',
+    fx:{teaching:3}, stress:8, w:12, minR:0 },
+  { id:'t2', type:'teaching',  title:'Advanced Seminar',
+    desc:'Lead a specialist MSc seminar on your niche.',
+    fx:{teaching:4,research:1}, stress:9, w:8, minR:1 },
+  { id:'t3', type:'teaching',  title:'Mark 200 Exams',
+    desc:'A stack of scripts appeared. Coffee, first.',
+    fx:{teaching:2}, stress:15, w:8, minR:0 },
+  { id:'t4', type:'teaching',  title:'Design New Course',
+    desc:'Build next semester\'s course from scratch.',
+    fx:{teaching:6,outreach:1}, stress:11, w:5, minR:1 },
+  { id:'t5', type:'teaching',  title:'Guest Lecture Tour',
+    desc:'Invited to lecture at two partner universities.',
+    fx:{teaching:3,outreach:3}, stress:8, w:5, minR:1 },
+
+  // RESEARCH
+  { id:'r1', type:'research',  title:'Lab / Field Work',
+    desc:'Back to basics. Collect data, run experiments.',
+    fx:{research:5}, stress:9, w:10, minR:0 },
+  { id:'r2', type:'research',  title:'Data Analysis',
+    desc:'Statistics, modelling. Eyes burn. Worth it.',
+    fx:{research:4,pubs:1}, stress:8, w:9, minR:0 },
+  { id:'r3', type:'research',  title:'Write Paper',
+    desc:'Draft a manuscript. Imposter syndrome peaking.',
+    fx:{pubs:5,research:2}, stress:13, w:9, minR:0 },
+  { id:'r4', type:'research',  title:'Peer Review',
+    desc:'Two papers to review. Unpaid, as usual.',
+    fx:{research:2,pubs:1}, stress:6, w:8, minR:1 },
+  { id:'r5', type:'research',  title:'Conference Talk',
+    desc:'Present in Amsterdam. Jet lag not included.',
+    fx:{research:3,pubs:2,outreach:2}, stress:11, w:7, minR:0 },
+  { id:'r6', type:'research',  title:'Collaboration Visit',
+    desc:'A week with a partner lab. Ideas cross-pollinate.',
+    fx:{research:6,pubs:1}, stress:9, w:5, minR:1 },
+  { id:'r7', type:'research',  title:'Risky Experiment',
+    desc:'High variance. Could flop. Could change your field.',
+    fx:{}, stress:12, w:4, minR:1, special:'highrisk' },
+  { id:'r8', type:'research',  title:'Write Book Chapter',
+    desc:'Invited chapter. Prestige. Remarkably few citations.',
+    fx:{pubs:4,outreach:2}, stress:10, w:4, minR:2 },
+
+  // GRANTS
+  { id:'g1', type:'grant',     title:'Small Grant Application',
+    desc:'Seed or travel funding. Low risk, modest reward.',
+    fx:{grants:3}, stress:7, w:9, minR:0 },
+  { id:'g2', type:'grant',     title:'Major Grant Proposal',
+    desc:'3 months of effort crammed into a single week.',
+    fx:{grants:9}, stress:19, w:6, minR:1 },
+  { id:'g3', type:'grant',     title:'Grant Progress Report',
+    desc:'Annual report for your funder. Bureaucracy incarnate.',
+    fx:{grants:2}, stress:10, w:7, minR:1 },
+  { id:'g4', type:'grant',     title:'Industry Partnership',
+    desc:'Negotiate a collaborative grant. Useful contacts.',
+    fx:{grants:6,outreach:3}, stress:12, w:5, minR:2 },
+  { id:'g5', type:'grant',     title:'EU Consortium Bid',
+    desc:'Coordinate 6 partners, 3 time zones, 1 deadline.',
+    fx:{grants:13,outreach:2}, stress:23, w:3, minR:3 },
+
+  // SUPERVISION
+  { id:'s1', type:'super',     title:'Supervise BSc Projects',
+    desc:'Guide six undergrads through their first research.',
+    fx:{teaching:2,research:1}, stress:8, w:10, minR:0 },
+  { id:'s2', type:'super',     title:'Supervise MSc Projects',
+    desc:'Three master\'s students, weekly meetings, constant feedback.',
+    fx:{teaching:3,research:2}, stress:10, w:8, minR:1 },
+  { id:'s3', type:'super',     title:'PhD Supervision',
+    desc:'Weekly 1-to-1s, thesis comments, existential crises.',
+    fx:{research:3,pubs:2}, stress:11, w:8, minR:2 },
+  { id:'s4', type:'super',     title:'PhD Viva (External)',
+    desc:'External examiner. All-day affair. Pack a lunch.',
+    fx:{teaching:3,pubs:1}, stress:10, w:5, minR:2 },
+
+  // ADMIN
+  { id:'a1', type:'admin',     title:'Committee Meeting',
+    desc:'Four hours of departmental admin. You emerge, barely.',
+    fx:{}, stress:14, w:8, minR:1, special:'committee' },
+  { id:'a2', type:'admin',     title:'Department Away Day',
+    desc:'Team building. You survive. The catering is adequate.',
+    fx:{outreach:2}, stress:9, w:6, minR:0 },
+  { id:'a3', type:'admin',     title:'Write Reference Letters',
+    desc:'Six students. Each letter must feel personal.',
+    fx:{teaching:1,outreach:1}, stress:8, w:7, minR:1 },
+  { id:'a4', type:'admin',     title:'Accreditation Report',
+    desc:'Quality assurance paperwork for the department.',
+    fx:{teaching:1}, stress:17, w:4, minR:2 },
+
+  // OUTREACH
+  { id:'o1', type:'outreach',  title:'Public Lecture',
+    desc:'Explain your research to 200 curious non-specialists.',
+    fx:{outreach:5,teaching:1}, stress:8, w:6, minR:0 },
+  { id:'o2', type:'outreach',  title:'Media Interview',
+    desc:'Radio + newspaper. Every word will be misquoted.',
+    fx:{outreach:6}, stress:7, w:5, minR:1 },
+  { id:'o3', type:'outreach',  title:'School Science Visit',
+    desc:'Inspire the next generation. Genuinely fun.',
+    fx:{outreach:4,teaching:1}, stress:5, w:7, minR:0 },
+  { id:'o4', type:'outreach',  title:'Policy Brief',
+    desc:'Translate your research for government. Impactful.',
+    fx:{outreach:6,grants:2}, stress:10, w:4, minR:2 },
+  { id:'o5', type:'outreach',  title:'Science Podcast',
+    desc:'Guest appearance. You are surprisingly charming.',
+    fx:{outreach:5,pubs:1}, stress:5, w:5, minR:1 },
+
+  // HOLIDAYS & REST
+  { id:'h1', type:'holiday',   title:'Full Week Holiday',
+    desc:'Laptop closed. Phone off. Stress plummets. You remember you have hobbies.',
+    fx:{}, stress:-22, w:6, minR:0, special:'holiday' },
+  { id:'h2', type:'holiday',   title:'Long Weekend',
+    desc:'Friday afternoon off. A small act of necessary self-care.',
+    fx:{}, stress:-11, w:8, minR:0, special:'holiday' },
+  { id:'h3', type:'holiday',   title:'Morning Exercise Routine',
+    desc:'Running, cycling, yoga. Body first. Then brain.',
+    fx:{}, stress:-9, w:8, minR:0, special:'holiday' },
+  { id:'h4', type:'mentoring', title:'Seek Mentoring',
+    desc:'Coffee with your own mentor. Career guidance and moral support.',
+    fx:{research:1,grants:1}, stress:-6, w:5, minR:0 },
+];
+
+/* ════════════════════════════════════════════════════
+   RANDOM EVENTS (drawn once per week for a random player)
+════════════════════════════════════════════════════ */
+const EVENTS = [
+  { icon:'📄', title:'Paper Accepted!',
+    sub:'A top journal accepted your manuscript.',
+    fn(p){ p.stats.pubs+=4; p.stats.stress=Math.max(0,p.stats.stress-5); log(`${p.name}: paper accepted! +4 Pubs`,'g'); } },
+  { icon:'💰', title:'Grant Awarded!',
+    sub:'Your funding application was successful.',
+    fn(p){ p.stats.grants+=8; p.stats.stress=Math.max(0,p.stats.stress-8); log(`${p.name}: grant awarded! +8 Grants`,'g'); } },
+  { icon:'❌', title:'Paper Rejected',
+    sub:'Reviewer 2 was particularly brutal.',
+    fn(p){ p.stats.pubs=Math.max(0,p.stats.pubs-2); p.stats.stress+=8; log(`${p.name}: paper rejected. -2 Pubs, +8 stress`,'b'); } },
+  { icon:'😰', title:'Student in Crisis',
+    sub:'A PhD student needs urgent pastoral support.',
+    fn(p){ p.stats.stress+=12; log(`${p.name}: student crisis! +12 stress`,'b'); } },
+  { icon:'🏆', title:'Teaching Award',
+    sub:'Students voted you Lecturer of the Year.',
+    fn(p){ p.stats.teaching+=5; p.stats.stress=Math.max(0,p.stats.stress-5); log(`${p.name}: teaching award! +5 Teaching, -5 stress`,'g'); } },
+  { icon:'🤝', title:'New Collaborator',
+    sub:'A leading researcher proposes a joint project.',
+    fn(p){ p.stats.research+=4; p.stats.grants+=3; log(`${p.name}: new collaborator! +4 Research, +3 Grants`,'g'); } },
+  { icon:'😤', title:'Departmental Conflict',
+    sub:'Factionalism erupts. Extra meetings proliferate.',
+    fn(p){ p.stats.stress+=10; log(`${p.name}: caught in departmental politics. +10 stress`,'w'); } },
+  { icon:'✈️', title:'Sabbatical Approved!',
+    sub:'A full semester of uninterrupted research.',
+    fn(p){ p.stats.research+=10; p.stats.stress=Math.max(0,p.stats.stress-15); log(`${p.name}: sabbatical! +10 Research, -15 stress`,'g'); } },
+  { icon:'📱', title:'Research Goes Viral',
+    sub:'Your work makes the national news. Inbox explodes.',
+    fn(p){ p.stats.outreach+=8; p.stats.stress+=6; log(`${p.name}: research goes viral! +8 Outreach, +6 stress`,'g'); } },
+  { icon:'🔧', title:'Equipment Failure',
+    sub:'Lab equipment fails mid-experiment. Weeks of data lost.',
+    fn(p){ p.stats.research=Math.max(0,p.stats.research-4); p.stats.stress+=10; log(`${p.name}: equipment failure. -4 Research, +10 stress`,'b'); } },
+  { icon:'🌱', title:'Quiet Productive Week',
+    sub:'Everything clicked. A rare gift.',
+    fn(p){ p.stats.research+=2; p.stats.stress=Math.max(0,p.stats.stress-4); log(`${p.name}: quiet productive week. Small wins.`,'g'); } },
+];
+
+/* ════════════════════════════════════════════════════
+   GAME STATE
+════════════════════════════════════════════════════ */
+let G = {
+  players: [], week: 0, maxWeeks: 80, curIdx: 0,
+  tpw: 6, ppw: 2, mandated: 1, curTasks: [], selTasks: [],
+  phase: 'setup', evQueue: [],
+};
+
+/* ════════════════════════════════════════════════════
+   SETUP
+════════════════════════════════════════════════════ */
+function buildSlots() {
+  const n = +document.getElementById('nump').value;
+  const el = document.getElementById('pslots');
+  el.innerHTML = '';
+  const profileOpts = PROFILES.map((p,pi) =>
+    `<option value="${p.id}">${p.icon} ${p.label}</option>`).join('');
+  for (let i = 0; i < 4; i++) {
+    const on = i < n;
+    const row = document.createElement('div');
+    row.className = 'p-row';
+    row.innerHTML = `
+      <div class="p-num">${i+1}</div>
+      <div><input type="text" id="pn${i}" value="${PNAMES[i]}" ${on?'':'disabled'} style="width:100%"></div>
+      <div><select id="pp${i}" ${on?'':'disabled'}>${profileOpts}</select></div>
+      <div><select id="pt${i}" ${on?'':'disabled'}>
+        <option value="human">Human</option>
+        <option value="cpu">CPU</option>
+      </select></div>
+      <div><select id="pc${i}" ${on?'':'disabled'}>
+        ${COLORS.map((c,ci)=>`<option value="${ci}" ${ci===i?'selected':''}>${CNAMES[ci]}</option>`).join('')}
+      </select></div>`;
+    el.appendChild(row);
+  }
+}
+
+function startGame() {
+  const n = +document.getElementById('nump').value;
+  G.maxWeeks = +document.getElementById('glen').value;
+  G.tpw = +document.getElementById('tpw').value;
+  G.ppw = +document.getElementById('ppw').value;
+  G.mandated = +document.getElementById('mpw').value;
+  G.week = 0; G.curIdx = 0; G.phase = 'playing'; G.evQueue = [];
+  G.players = [];
+  for (let i = 0; i < n; i++) {
+    const profileId = document.getElementById(`pp${i}`).value;
+    const profile = PROFILES.find(p => p.id === profileId) || PROFILES[0];
+    G.players.push({
+      id:i, name: document.getElementById(`pn${i}`).value || `Player ${i+1}`,
+      type: document.getElementById(`pt${i}`).value,
+      color: COLORS[+document.getElementById(`pc${i}`).value],
+      profile,
+      rankIdx: 0,
+      stats: { teaching:0, research:0, grants:0, outreach:0, pubs:0, stress:10 },
+      stressHistory: [10],
+      burnouts: 0, weeksPlayed: 0,
+      milestones: [], isBurnt: false, burntLeft: 0,
+    });
+  }
+  showScreen('game');
+  log('The academic year begins. Remember: slow and steady wins.','i');
+  renderAll(); startTurn();
+}
+
+/* ════════════════════════════════════════════════════
+   SCORE FORMULA
+   Score = rankBonus - (meanStress * 1.5) - (burnouts * 15)
+   Lower stress = better. This is the whole point.
+════════════════════════════════════════════════════ */
+function computeScore(p) {
+  const mean = p.stressHistory.length
+    ? p.stressHistory.reduce((a,b)=>a+b,0) / p.stressHistory.length
+    : p.stats.stress;
+  const rankBonus = RANKS[p.rankIdx].rankBonus;
+  return rankBonus - Math.round(mean * 1.5) - (p.burnouts * 15);
+}
+
+function meanStress(p) {
+  if (!p.stressHistory.length) return p.stats.stress;
+  return Math.round(p.stressHistory.reduce((a,b)=>a+b,0) / p.stressHistory.length);
+}
+
+/* ════════════════════════════════════════════════════
+   GAME LOOP
+════════════════════════════════════════════════════ */
+function startTurn() {
+  // Advance week counter at start of each round
+  if (G.curIdx === 0) {
+    G.week++;
+    document.getElementById('tbweek').textContent =
+      G.maxWeeks > 0 ? `Week ${G.week} / ${G.maxWeeks}` : `Week ${G.week}`;
+
+    // Random event every ~3 weeks
+    if (G.week > 1 && Math.random() < 0.32) {
+      const ev = EVENTS[Math.floor(Math.random() * EVENTS.length)];
+      const tgt = G.players[Math.floor(Math.random() * G.players.length)];
+      ev.fn(tgt);
+      G.evQueue.push({ icon:ev.icon, title:ev.title, sub:`Affects: ${tgt.name}`, body:ev.sub, btns:[{label:'Noted',cb:null}] });
+    }
+  }
+
+  const p = cur();
+  p.weeksPlayed++;
+
+  // Burnout recovery — show overlay, block all interaction
+  if (p.isBurnt) {
+    p.burntLeft--;
+    p.stressHistory.push(p.stats.stress);
+    renderAll();
+    if (p.type === 'cpu') {
+      // CPU just waits silently
+      if (p.burntLeft <= 0) { p.isBurnt = false; log(`${p.name} returns from recovery.`,'i'); }
+      else log(`${p.name} (CPU) still recovering (${p.burntLeft}w left).`,'w');
+      setTimeout(advance, 600);
+    } else {
+      // Human: show locked overlay
+      renderBanner(p);
+      showBurnoutOverlay(p);
+    }
+    return;
+  }
+
+  // Passive rank stress (higher rank = more pressure)
+  const rankPressure = [1,2,3,4,5][p.rankIdx] || 1;
+  // Assoc II perk: salary buffer eases stress
+  const stressRelief = p.rankIdx >= 3 ? -2 : 0;
+  p.stats.stress = clamp(p.stats.stress + rankPressure + stressRelief, 0, 110);
+
+  if (p.stats.stress >= 100) { burnout(p); return; }
+  if (p.stats.stress >= 80)  log(`⚠ ${p.name}'s stress is critical!`, 'c');
+
+  renderAll(); drainQ();
+
+  if (p.type === 'cpu') {
+    renderBanner(p);
+    setTimeout(() => cpuTurn(p), 800);
+  } else {
+    renderBanner(p); renderTasks(p); updateConfirm();
+  }
+}
+
+function advance() {
+  G.selTasks = [];
+  G.curIdx = (G.curIdx + 1) % G.players.length;
+  if (G.curIdx === 0) {
+    // End condition: unlimited mode ends only when someone reaches Full Prof
+    if (G.maxWeeks > 0 && G.week >= G.maxWeeks) { endGame(); return; }
+    if (G.maxWeeks === 0 && G.players.some(p => p.rankIdx >= RANKS.length-1)) { endGame(); return; }
+  }
+  hideBurnoutOverlay();
+  updateConfirm(); startTurn(); renderAll();
+}
+
+function showBurnoutOverlay(p) {
+  const ov = document.getElementById('burnout-overlay');
+  const weeksLeft = p.burntLeft; // already decremented, so 0 means this is the last week
+  document.getElementById('bo-title').textContent =
+    weeksLeft <= 0 ? `${p.name} — Final Recovery Week` : `${p.name} — Burned Out`;
+  document.getElementById('bo-sub').innerHTML =
+    weeksLeft <= 0
+      ? `This is your last recovery week.\nStress has eased to ${p.stats.stress}.\nYou will return to work next week.`
+      : `${weeksLeft} recovery week${weeksLeft>1?'s':''} remaining.\nAll task cards are unavailable.\nStress: ${p.stats.stress} · Rank retained.`;
+  document.getElementById('bo-next-btn').textContent =
+    weeksLeft <= 0 ? 'Return to work →' : 'Rest this week →';
+  // Grey out confirm and task grid
+  document.getElementById('confirm').disabled = true;
+  document.getElementById('tgrid').innerHTML =
+    `<div style="grid-column:1/-1;font-family:'Lora',serif;font-style:italic;font-size:.78rem;color:var(--ink3);text-align:center;padding:20px 0;">No tasks available during recovery.</div>`;
+  ov.classList.add('show');
+}
+
+function hideBurnoutOverlay() {
+  document.getElementById('burnout-overlay').classList.remove('show');
+}
+
+function advanceBurnout() {
+  const p = cur();
+  hideBurnoutOverlay();
+  if (p.burntLeft <= 0) {
+    p.isBurnt = false;
+    log(`${p.name} returns from burnout recovery.`,'i');
+  }
+  advance();
+}
+
+/* ════════════════════════════════════════════════════
+   PROFILES
+   Each profile defines stress modifiers per task type.
+   Positive = extra stress added, negative = stress saved.
+   "affinity" types cost -stressMod (the profile enjoys them).
+════════════════════════════════════════════════════ */
+const PROFILES = [
+  {
+    id:'generalist', label:'Generalist', icon:'🎓',
+    desc:'A balanced academic. No special bonuses or penalties.',
+    mods:{}, // no modifiers
+  },
+  {
+    id:'field_ecologist', label:'Field Ecologist', icon:'🌿',
+    desc:'At home outdoors. Field work and conferences energise; admin drains.',
+    mods:{ research:-7, outreach:-4, teaching:+3, admin:+6, grant:+4 },
+    taskMods:{ r1:-8, r5:-5, o3:-5 }, // specific task overrides
+  },
+  {
+    id:'data_analyst', label:'Data Scientist', icon:'📊',
+    desc:'Lives for models and code. Fieldwork is stressful; analysis is zen.',
+    mods:{ research:-5, teaching:+4, outreach:+5, admin:+5 },
+    taskMods:{ r2:-9, r1:+5 },
+  },
+  {
+    id:'lecturer', label:'Dedicated Lecturer', icon:'📋',
+    desc:'Teaching is a vocation. Seminars re-energise; grant writing is agony.',
+    mods:{ teaching:-6, super:-4, grant:+8, research:+3 },
+    taskMods:{ t1:-4, t2:-5, t4:-6, g2:+10 },
+  },
+  {
+    id:'grant_hunter', label:'Grant Hunter', icon:'💰',
+    desc:'Loves the thrill of funding bids. Marking is soul-destroying.',
+    mods:{ grant:-7, outreach:-3, teaching:+6, admin:+5 },
+    taskMods:{ g1:-5, g2:-8, t3:+8 },
+  },
+  {
+    id:'public_communicator', label:'Science Communicator', icon:'📢',
+    desc:'Outreach and media are natural. Writing papers feels isolating.',
+    mods:{ outreach:-8, teaching:-3, research:+4, grant:+4 },
+    taskMods:{ o1:-6, o2:-7, o5:-6, r3:+5 },
+  },
+  {
+    id:'clinician', label:'Clinician-Researcher', icon:'🏥',
+    desc:'Bridges lab and clinic. Supervision energises; pure admin crushes.',
+    mods:{ super:-6, research:-3, admin:+7, grant:+3 },
+    taskMods:{ s3:-7, s2:-5, a1:+9, a4:+8 },
+  },
+  {
+    id:'theorist', label:'Theorist', icon:'🔭',
+    desc:'Pure ideas. Writing and peer review are satisfying; fieldwork is not.',
+    mods:{ research:-6, admin:+6, teaching:+3 },
+    taskMods:{ r3:-7, r4:-5, r1:+7, r2:-5 },
+  },
+];
+
+// Pool of tasks that can be MANDATED by the university
+const MANDATED_POOL = [
+  'a1','a2','a3','a4',   // admin tasks
+  't1','t3',             // teaching duties (lectures + marking)
+  's1',                  // BSc supervision
+];
+
+/* ════════════════════════════════════════════════════
+   TASKS
+════════════════════════════════════════════════════ */
+function drawTasks(p) {
+  const pool = TASKS.filter(t => t.minR <= p.rankIdx);
+  const bucket = [];
+  pool.forEach(t => { const w = Math.max(1, t.w); for (let i=0;i<w;i++) bucket.push(t); });
+
+  // ── Mandated cards (university requirements) ──────────────────────────
+  const mandatedCards = [];
+  const mandatedCount = G.mandated;
+  if (mandatedCount > 0) {
+    const availMandated = TASKS.filter(t => MANDATED_POOL.includes(t.id));
+    const shuffled = availMandated.sort(() => Math.random() - 0.5);
+    // Pick without duplicates, up to mandatedCount
+    const usedIds = new Set();
+    for (const t of shuffled) {
+      if (mandatedCards.length >= mandatedCount) break;
+      if (!usedIds.has(t.id)) { usedIds.add(t.id); mandatedCards.push({...t, mandated:true}); }
+    }
+  }
+
+  // ── Free-choice cards (excluding already-mandated ids) ────────────────
+  const mandatedIds = new Set(mandatedCards.map(t => t.id));
+  const freeBucket = bucket.filter(t => !mandatedIds.has(t.id));
+  const freeTarget = Math.max(0, G.tpw - mandatedCards.length);
+  const drawn = [], seen = new Set(mandatedIds);
+  let tries = 0;
+  while (drawn.length < freeTarget && tries < freeBucket.length * 3) {
+    const t = freeBucket[Math.floor(Math.random()*freeBucket.length)]; tries++;
+    if (!seen.has(t.id)) { seen.add(t.id); drawn.push(t); }
+  }
+  // Always ensure at least one rest card in free choices
+  if (!drawn.some(t => t.type==='holiday') && mandatedCards.length < G.tpw) {
+    const restCard = TASKS.find(t => t.id==='h2');
+    if (drawn.length > 0 && !mandatedIds.has('h2')) drawn[drawn.length-1] = restCard;
+  }
+
+  // Mandated cards go first so they render prominently
+  return [...mandatedCards, ...drawn];
+}
+
+function renderTasks(p) {
+  G.curTasks = drawTasks(p);
+  G.selTasks = [];
+
+  // Auto-select all mandated cards
+  G.curTasks.forEach((t, i) => { if (t.mandated) G.selTasks.push(i); });
+
+  const grid = document.getElementById('tgrid');
+  grid.innerHTML = '';
+  G.curTasks.forEach((t, i) => {
+    const c = document.createElement('div');
+
+    // Profile stress modifier for display
+    const profileMod = getProfileStressMod(p, t);
+    const displayStress = t.stress + profileMod;
+    const s = displayStress;
+    const spCls = s < 0 ? 'sp-neg' : s < 10 ? 'sp-lo' : s < 16 ? 'sp-md' : 'sp-hi';
+    const stCol = s < 0 ? 'var(--blue2)' : s < 10 ? 'var(--green2)' : s < 16 ? 'var(--amber2)' : 'var(--red2)';
+    const stTxt = s < 0 ? `Stress ${s}` : s===0 ? 'No stress' : `+${s} stress`;
+    const modNote = profileMod !== 0
+      ? `<span style="font-size:.52rem;color:${profileMod<0?'var(--blue2)':'var(--red2)'};">${profileMod<0?profileMod:'+'+profileMod} (${p.profile.icon})</span>`
+      : '';
+
+    const effs = Object.entries(t.fx).filter(([,v])=>v!==0).map(([k,v]) => {
+      const col = STAT_COLORS[k] || '#888';
+      return `<span class="tag" style="background:${col}22;color:${col}">${v>0?'+':''}${v} ${k}</span>`;
+    }).join('');
+
+    let cls = `tc`;
+    if (t.type==='holiday') cls += ' holi';
+    if (t.mandated)         cls += ' mandated';
+    if (G.selTasks.includes(i)) cls += ' sel';
+
+    c.className = cls;
+    c.id = `tc${i}`;
+    c.innerHTML = `
+      <div class="tc-type tp-${t.type}">${t.type}${t.mandated?' · <span style="color:var(--red2)">REQUIRED</span>':''}</div>
+      <div class="tc-title">${t.title}</div>
+      <div class="tc-desc">${t.desc}</div>
+      <div class="tc-tags">${effs || '<span style="font-size:.6rem;color:var(--ink3);font-style:italic">No stat gain</span>'}</div>
+      <div class="tc-stress-row">
+        <div class="stress-pip ${spCls}"></div>
+        <div class="tc-stress-txt" style="color:${stCol}">${stTxt} ${modNote}</div>
+      </div>
+      ${t.mandated ? '<div class="mandated-stamp">📌 COMPULSORY</div>' : '<div class="tc-check">✓</div>'}`;
+
+    if (!t.mandated) {
+      c.onclick = () => toggleTask(i, p);
+    }
+    grid.appendChild(c);
+  });
+
+  updateConfirm();
+}
+
+// Return the net stress modifier this player's profile applies to a given task
+function getProfileStressMod(p, t) {
+  const prof = p.profile;
+  if (!prof || prof.id === 'generalist') return 0;
+  // Task-specific override takes priority
+  if (prof.taskMods && t.id in prof.taskMods) return prof.taskMods[t.id];
+  // Fall back to type-level modifier
+  if (prof.mods && t.type in prof.mods) return prof.mods[t.type];
+  return 0;
+}
+
+function toggleTask(i, p) {
+  const t = G.curTasks[i];
+  if (t && t.mandated) return; // mandated cards cannot be deselected
+  const card = document.getElementById(`tc${i}`);
+  const idx = G.selTasks.indexOf(i);
+  let maxP = G.ppw;
+  if (p.rankIdx >= 1 && G.week % 5 === 0) maxP++;
+  if (idx >= 0) {
+    G.selTasks.splice(idx, 1); card.classList.remove('sel');
+  } else {
+    if (G.selTasks.length >= maxP) {
+      // Find oldest non-mandated selection to bump
+      const bumpIdx = G.selTasks.findIndex(si => !G.curTasks[si]?.mandated);
+      if (bumpIdx >= 0) {
+        const old = G.selTasks.splice(bumpIdx, 1)[0];
+        document.getElementById(`tc${old}`)?.classList.remove('sel');
+      } else return; // all slots occupied by mandated tasks
+    }
+    G.selTasks.push(i); card.classList.add('sel');
+  }
+  updateConfirm();
+}
+
+function updateConfirm() {
+  const btn = document.getElementById('confirm');
+  const p = cur();
+  if (!p || p.type !== 'human' || p.isBurnt) { btn.disabled = true; return; }
+  let maxP = G.ppw;
+  if (p.rankIdx >= 1 && G.week % 5 === 0) maxP++;
+  const mandatedCount = G.selTasks.filter(i => G.curTasks[i]?.mandated).length;
+  const freeCount = G.selTasks.length - mandatedCount;
+  const freePicks = maxP - mandatedCount;
+  btn.disabled = false;
+  if (G.selTasks.length > 0) {
+    const parts = [];
+    if (mandatedCount > 0) parts.push(`${mandatedCount} required`);
+    if (freeCount > 0) parts.push(`${freeCount} chosen`);
+    btn.textContent = `Confirm ${parts.join(' + ')} task${G.selTasks.length>1?'s':''} and end week →`;
+  } else {
+    btn.textContent = `Choose up to ${freePicks} free task${freePicks>1?'s':''} (${mandatedCount} required)`;
+    if (mandatedCount === 0) btn.disabled = true;
+  }
+}
+
+function confirmTurn() {
+  const p = cur();
+  if (!p || G.selTasks.length === 0) return;
+  applyTasks(p, G.selTasks.map(i => G.curTasks[i]));
+  if (p.stats.stress >= 100) { burnout(p); return; }
+  checkMilestones(p);
+  p.stressHistory.push(p.stats.stress);
+  renderAll();
+  setTimeout(advance, 120);
+}
+
+function applyTasks(p, tasks) {
+  tasks.forEach(t => {
+    const profileMod = getProfileStressMod(p, t);
+    const effectiveStress = t.stress + profileMod;
+
+    if (t.special === 'highrisk') {
+      if (Math.random() > 0.42) {
+        p.stats.research += 10; p.stats.pubs += 6;
+        log(`${p.name}: risky experiment WORKED! +10 Research, +6 Pubs`,'g');
+      } else {
+        p.stats.research = Math.max(0, p.stats.research - 2);
+        log(`${p.name}: risky experiment flopped. -2 Research`,'b');
+      }
+    } else if (t.special === 'committee') {
+      log(`${p.name}: survived committee. No stats, just suffering.`);
+    } else {
+      Object.entries(t.fx).forEach(([k,v]) => {
+        if (k in p.stats) p.stats[k] = Math.max(0, (p.stats[k]||0) + v);
+      });
+    }
+    p.stats.stress = clamp(p.stats.stress + effectiveStress, 0, 110);
+    const sv = effectiveStress < 0 ? `(stress ${effectiveStress})` : effectiveStress > 0 ? `(+${effectiveStress} stress)` : '';
+    const profNote = profileMod !== 0 ? ` [${p.profile.icon}${profileMod>0?'+':''}${profileMod}]` : '';
+    const mandNote = t.mandated ? ' 📌' : '';
+    log(`${p.name}: ${t.title}${mandNote} ${sv}${profNote}`);
+  });
+}
+
+/* ════════════════════════════════════════════════════
+   CPU AI — prioritises stat gaps + stress management
+════════════════════════════════════════════════════ */
+function cpuTurn(p) {
+  const tasks = drawTasks(p); G.curTasks = tasks;
+  const nextId = RANKS[Math.min(p.rankIdx+1, RANKS.length-1)].id;
+  const req = PROMO_REQ[nextId] || {};
+  let maxP = G.ppw;
+  if (p.rankIdx >= 1 && G.week % 5 === 0) maxP++;
+
+  // Mandated tasks are always included automatically
+  const mandatedIdxs = tasks.map((t,i) => t.mandated ? i : -1).filter(i => i>=0);
+  const freeSlots = maxP - mandatedIdxs.length;
+
+  const freeTasks = tasks.map((t,i) => ({t, i})).filter(({t}) => !t.mandated);
+  const scored = freeTasks.map(({t, i}) => {
+    const profileMod = getProfileStressMod(p, t);
+    const effStress = t.stress + profileMod;
+    let score = 0;
+    // Rest if stressed — more weight the higher the stress
+    if (p.stats.stress > 60 && effStress < 0) score += 40 + (p.stats.stress - 60);
+    if (p.stats.stress > 80 && effStress < 0) score += 50;
+    // Fill stat gaps towards next promotion
+    Object.entries(req).forEach(([k, need]) => {
+      const gap = need - (p.stats[k]||0);
+      if (gap > 0) score += gap * (t.fx[k]||0) * 2;
+    });
+    // Prefer tasks the profile enjoys (negative effective stress)
+    if (effStress < t.stress) score += 8; // profile bonus
+    // Avoid high-stress tasks when stressed
+    if (p.stats.stress > 55 && effStress > 14) score -= 20;
+    score += Math.random() * 8;
+    return { i, score };
+  });
+
+  scored.sort((a,b) => b.score - a.score);
+  const chosenIdxs = [...mandatedIdxs, ...scored.slice(0, Math.max(0, freeSlots)).map(s => s.i)];
+  const chosen = chosenIdxs.map(i => tasks[i]);
+
+  applyTasks(p, chosen);
+
+  if (p.stats.stress >= 100) { burnout(p); return; }
+
+  // CPU auto-promotes when eligible
+  if (canPromote(p)) doPromotion(p, true);
+  checkMilestones(p);
+  p.stressHistory.push(p.stats.stress);
+  log(`${p.name} (CPU): ${chosen.map(t=>t.title).join(' + ')}`);
+  renderAll();
+  setTimeout(advance, 300);
+}
+
+/* ════════════════════════════════════════════════════
+   PROMOTION
+════════════════════════════════════════════════════ */
+function canPromote(p) {
+  if (p.rankIdx >= RANKS.length-1) return false;
+  const nId = RANKS[p.rankIdx+1].id;
+  const req = PROMO_REQ[nId]; if (!req) return false;
+  return Object.entries(req).every(([k,v]) => (p.stats[k]||0) >= v);
+}
+
+function tryPromotion() {
+  const p = cur();
+  if (!canPromote(p)) {
+    openOv({ icon:'📋', title:'Not Eligible Yet',
+      sub:`Requirements for ${RANKS[Math.min(p.rankIdx+1,RANKS.length-1)].label}:`,
+      body: promoReqText(p),
+      btns:[{label:'Back to work',cls:''}]
+    }); return;
+  }
+  doPromotion(p, false);
+}
+
+function doPromotion(p, auto) {
+  const old = RANKS[p.rankIdx].label;
+  p.rankIdx++;
+  const nw = RANKS[p.rankIdx];
+  p.milestones.push(`Promoted: ${nw.label} (Wk ${G.week})`);
+  log(`🎓 ${p.name} promoted to ${nw.label}!`,'g');
+  if (!auto) {
+    openOv({ icon:'🎓', title:'Promoted!',
+      sub:`${p.name} advances to ${nw.label}`,
+      body:`Previous rank: ${old}\n\nNote: higher rank means slightly more\npassive stress each week. Manage carefully.\n${p.rankIdx===1?'\nPerk: bonus task pick every 5 weeks.':''}${p.rankIdx===3?'\nPerk: salary buffer eases stress each week.':''}`,
+      btns:[{label:'Accept the burden',cls:''}]
+    });
+  }
+  if (G.maxWeeks === 0 && p.rankIdx >= RANKS.length-1) { setTimeout(endGame, 600); }
+  renderAll();
+}
+
+function promoReqText(p) {
+  if (p.rankIdx >= RANKS.length-1) return 'You are at the top rank.';
+  const nId = RANKS[p.rankIdx+1].id;
+  const req = PROMO_REQ[nId]; if (!req) return 'No requirements defined.';
+  return Object.entries(req).map(([k,v]) => {
+    const have = p.stats[k]||0;
+    return `${(k+'          ').slice(0,10)} ${String(have).padStart(3)} / ${v}  ${have>=v?'✓':'✗'}`;
+  }).join('\n');
+}
+
+/* ════════════════════════════════════════════════════
+   BURNOUT — no rank loss, just recovery time
+════════════════════════════════════════════════════ */
+function burnout(p) {
+  p.stats.stress = 45;
+  p.burnouts++;
+  p.isBurnt = true; p.burntLeft = 3;
+  p.stressHistory.push(100); // punishes mean stress
+  p.milestones.push(`Burned out at ${RANKS[p.rankIdx].label} (Wk ${G.week})`);
+  log(`🔥 ${p.name} has burned out! 3 weeks recovery. Rank kept.`,'c');
+  openOv({ icon:'🔥', title:'Burnout!',
+    sub:`${p.name} collapses under academic pressure.`,
+    body:`Recovery: 3 weeks mandatory rest\nStress reset to 45\nRank retained: ${RANKS[p.rankIdx].label}\n\nBurnout count: ${p.burnouts}\nEach burnout costs −15 points on your final score.\n\nThis is not failure. But it is a warning.\nAcademia is hard. Take care of yourself.`,
+    btns:[{label:'Rest and recover',cls:''}]
+  });
+  renderAll(); setTimeout(advance, 300);
+}
+
+/* ════════════════════════════════════════════════════
+   MILESTONES
+════════════════════════════════════════════════════ */
+function checkMilestones(p) {
+  const chks = [
+    {k:'pubs',v:10,m:'📄 10 publications!'},{k:'pubs',v:25,m:'📄 25 publications!'},
+    {k:'grants',v:20,m:'💰 20 grant points!'},{k:'grants',v:50,m:'💰 50 grant points!'},
+    {k:'teaching',v:30,m:'🎓 30 teaching points!'},{k:'outreach',v:25,m:'📢 25 outreach!'},
+  ];
+  chks.forEach(c => {
+    const key = `ms_${c.k}_${c.v}`;
+    if ((p.stats[c.k]||0) >= c.v && !p.milestones.includes(key)) {
+      p.milestones.push(key); log(`${p.name}: ${c.m}`,'g');
+    }
+  });
+}
+
+/* ════════════════════════════════════════════════════
+   END GAME
+════════════════════════════════════════════════════ */
+function endGame() {
+  G.phase = 'end';
+  // Final scoring: lowest mean stress wins
+  const results = G.players.map(p => ({
+    p, score: computeScore(p), mean: meanStress(p),
+  }));
+  results.sort((a,b) => b.score - a.score); // highest score wins
+  const winner = results[0].p;
+
+  showScreen('win');
+  const rankCounts = results.map(r=>`<tr class="${r.p===winner?'winner':''}">
+    <td>${r.p===winner?'🏆 ':''}<span style="color:${r.p.color};font-weight:bold">${r.p.name}</span></td>
+    <td>${RANKS[r.p.rankIdx].short}</td>
+    <td>${r.mean}</td>
+    <td>${r.p.burnouts}</td>
+    <td style="color:${r.p===winner?'var(--green2)':'var(--ink2)'};font-weight:bold">${r.score}</td>
+  </tr>`).join('');
+
+  document.getElementById('diploma').innerHTML = `
+    <span class="dip-ornament">✦ ✦ ✦</span>
+    <div class="dip-univ">THE UNIVERSITY OF SLOW ACADEMIA</div>
+    <div class="dip-cert">presents the Award for Academic Wellbeing to</div>
+    <div class="dip-winner" style="color:${winner.color}">${winner.name}</div>
+    <div class="dip-why">${RANKS[winner.rankIdx].label} · Mean Stress: ${meanStress(winner)}</div>
+    <div style="font-family:'Lora',serif;font-style:italic;font-size:.88rem;color:var(--green);margin-bottom:14px;">
+      for achieving the highest score through sustainable work practices
+    </div>
+    <table class="dip-table">
+      <thead><tr>
+        <th>Name</th><th>Rank</th><th>Mean Stress</th><th>Burnouts</th><th>Score</th>
+      </tr></thead>
+      <tbody>${rankCounts}</tbody>
+    </table>
+    <hr class="dip-sep">
+    <div style="font-family:'Special Elite',monospace;font-size:.65rem;color:var(--ink3);letter-spacing:.06em;margin-bottom:6px;">
+      Score = Rank Bonus − (Mean Stress × 1.5) − (Burnouts × 15)
+    </div>
+    <span class="dip-ornament">✦ ✦ ✦</span>
+    <div class="dip-quote">"The measure of a career is not how high you climbed,<br>but how well you breathed on the way up."</div>`;
+}
+
+/* ════════════════════════════════════════════════════
+   RENDER
+════════════════════════════════════════════════════ */
+function renderAll() {
+  renderRoster(); renderLadder(); renderLB(); renderScoreboard();
+  renderPromoReq(); renderMilestones(); drainQ();
+}
+
+function renderRoster() {
+  const el = document.getElementById('roster-cards'); el.innerHTML = '';
+  G.players.forEach((p, i) => {
+    const rank = RANKS[p.rankIdx];
+    const isActive = i === G.curIdx;
+    const s = p.stats.stress;
+    const sc = s<40?'sb-ok':s<70?'sb-warn':s<85?'sb-high':'sb-crit';
+    const card = document.createElement('div');
+    card.className = `pc${isActive?' active':''}${p.isBurnt?' burnt':''}`;
+    const stats = STAT_KEYS.map(k => {
+      const v = p.stats[k]||0;
+      const pct = Math.min(100, v/70*100);
+      return `<div class="srow"><div class="sl">${STAT_LABELS[k]}</div>
+        <div class="sb"><div class="sf" style="width:${pct}%;background:${STAT_COLORS[k]}"></div></div>
+        <div class="sv">${v}</div></div>`;
+    }).join('');
+    let badge = '';
+    if (isActive && p.type!=='cpu') badge = '<div class="pc-badge pc-badge-turn">YOUR TURN</div>';
+    if (p.type==='cpu') badge += `<div class="pc-badge pc-badge-cpu">CPU</div>`;
+    if (p.isBurnt) badge = `<div class="pc-badge pc-badge-burnt">RECOVERY (${p.burntLeft}w)</div>`;
+    card.innerHTML = `${badge}
+      <div class="pc-colbar" style="background:${p.color}"></div>
+      <div class="pc-name">${p.name}</div>
+      <div class="pc-rank">${rank.short}</div>
+      <div class="pc-profile">${p.profile.icon} ${p.profile.label}</div>
+      ${stats}
+      <div class="srow" style="margin-top:3px">
+        <div class="sl">STRESS</div>
+        <div class="sb"><div class="sf sf-stress" style="width:${Math.min(100,s)}%"></div></div>
+        <div class="sv"><span class="sbadge ${sc}">${s}</span></div>
+      </div>
+      <div class="pc-pts">Wk avg stress: ${meanStress(p)}</div>
+      <div class="pc-score">Score: ${computeScore(p)}</div>`;
+    el.appendChild(card);
+  });
+}
+
+function renderBanner(p) {
+  const rank = RANKS[p.rankIdx];
+  const s = p.stats.stress;
+  const status = s<40?'Feeling refreshed and focused.':s<70?'Managing the workload.':s<85?'⚠ Stress is building — consider a rest.':'🔥 Critical stress! A holiday is not a luxury.';
+  const statusCol = s<40?'var(--green2)':s<70?'var(--ink3)':s<85?'var(--amber2)':'var(--red2)';
+  let maxP = G.ppw;
+  if (p.rankIdx>=1 && G.week%5===0) maxP++;
+  const canP = canPromote(p);
+  document.getElementById('banner').innerHTML = `
+    <div>
+      <div class="bn-name" style="color:${p.color}">${p.name}</div>
+      <div class="bn-rank">${rank.label}</div>
+      <div class="bn-status" style="color:${statusCol}">${status}</div>
+    </div>
+    <div class="bn-right">
+      <div class="bn-wk">Week ${G.week}${G.maxWeeks>0?' / '+G.maxWeeks:''}</div>
+      <div class="bn-picks">Pick up to ${maxP} task${maxP>1?'s':''}</div>
+      <button class="promo-btn" onclick="tryPromotion()" ${canP?'':'disabled'}>
+        ${canP?'📋 Apply for Promotion':'Promotion requirements not met'}
+      </button>
+    </div>`;
+}
+
+function renderLadder() {
+  const el = document.getElementById('ladder'); el.innerHTML = '';
+  [...RANKS].reverse().forEach(rank => {
+    const ps = G.players.filter(p => RANKS[p.rankIdx].id===rank.id);
+    const r = document.createElement('div');
+    r.className = `l-rung${ps.length?' has':''}`;
+    r.innerHTML = `<div class="lr-label">${rank.short}</div>
+      <div class="lr-dots">${ps.map(p=>`<div class="lr-dot" style="background:${p.color}" title="${p.name}"></div>`).join('')}</div>`;
+    el.appendChild(r);
+  });
+}
+
+function renderLB() {
+  const sorted = [...G.players].sort((a,b) => computeScore(b)-computeScore(a));
+  document.getElementById('lb').innerHTML = sorted.map((p,i) => `
+    <div class="lb-row">
+      <span style="color:var(--cork2);min-width:14px">${i+1}.</span>
+      <span style="color:${p.color};font-weight:bold;flex:1">${p.name}</span>
+      <span style="color:var(--ink3)">${RANKS[p.rankIdx].short}</span>
+      <span style="color:var(--green2);min-width:28px;text-align:right">${computeScore(p)} pts</span>
+    </div>`).join('');
+}
+
+function renderScoreboard() {
+  const el = document.getElementById('scoreboard');
+  el.innerHTML = G.players.map(p => {
+    const m = meanStress(p);
+    const rb = RANKS[p.rankIdx].rankBonus;
+    const sc = computeScore(p);
+    return `<div class="score-row">
+      <span class="score-key" style="color:${p.color}">${p.name}</span>
+      <span class="score-val">${sc} <span style="font-size:.56rem;color:var(--ink3)">(rank +${rb}, stress −${Math.round(m*1.5)}, bo −${p.burnouts*15})</span></span>
+    </div>`;
+  }).join('');
+}
+
+function renderPromoReq() {
+  const p = cur(); if (!p) return;
+  const next = p.rankIdx < RANKS.length-1 ? RANKS[p.rankIdx+1].label : 'Already at top';
+  document.getElementById('promo-req').innerHTML = `
+    <div style="font-family:'Special Elite',monospace;font-size:.6rem;color:var(--ink3);margin-bottom:4px">
+      Next: ${next}</div>
+    <div class="promo-req-text">${promoReqText(p)}</div>`;
+}
+
+function renderMilestones() {
+  const all = G.players.flatMap(p => p.milestones.filter(m=>!m.startsWith('ms_')));
+  const el = document.getElementById('milestones');
+  el.innerHTML = all.length
+    ? all.slice(-8).map(m=>`<div class="ms">🏅 ${m}</div>`).join('')
+    : '<div style="font-size:.68rem;color:var(--ink3);font-style:italic">No milestones yet...</div>';
+}
+
+/* ════════════════════════════════════════════════════
+   OVERLAY SYSTEM
+════════════════════════════════════════════════════ */
+let ovCbs = [];
+function openOv({icon='',title,sub,body,btns}) {
+  document.getElementById('ov-icon').textContent = icon;
+  document.getElementById('ov-title').textContent = title||'';
+  document.getElementById('ov-sub').textContent = sub||'';
+  document.getElementById('ov-body').textContent = body||'';
+  ovCbs = btns||[];
+  const bel = document.getElementById('ov-btns'); bel.innerHTML='';
+  (btns||[{label:'Continue',cls:''}]).forEach((b,i) => {
+    const btn = document.createElement('button');
+    btn.className = `ov-btn${b.cls?' '+b.cls:''}`;
+    btn.textContent = b.label;
+    btn.onclick = () => { closeOv(); b.cb&&b.cb(); drainQ(); };
+    bel.appendChild(btn);
+  });
+  document.getElementById('ov').classList.add('show');
+}
+function closeOv() { document.getElementById('ov').classList.remove('show'); }
+function drainQ() {
+  if (G.evQueue.length && !document.getElementById('ov').classList.contains('show'))
+    openOv(G.evQueue.shift());
+}
+
+/* ════════════════════════════════════════════════════
+   MISC HELPERS
+════════════════════════════════════════════════════ */
+function cur() { return G.players[G.curIdx]; }
+function clamp(v,lo,hi) { return Math.min(hi,Math.max(lo,v)); }
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function backToSetup() { G.phase='setup'; showScreen('setup'); buildSlots(); }
+
+function log(msg, cls='') {
+  const el = document.getElementById('log'); if(!el) return;
+  const d = document.createElement('div');
+  d.className = `le${cls?' '+cls:''}`;
+  d.textContent = msg;
+  el.appendChild(d);
+  el.scrollTop = el.scrollHeight;
+  while (el.children.length > 60) el.removeChild(el.firstChild);
+}
+
+function openHelp() {
+  openOv({ icon:'📖', title:'How to Play',
+    sub:'Climb the academic ladder — sustainably.',
+    body:`WIN CONDITION: lowest MEAN STRESS score wins.
+Score = Rank Bonus − (Mean Stress × 1.5) − (Burnouts × 15)
+You can win as an Assistant Professor!
+
+PROFILES:
+  Your profile adjusts stress costs on task cards.
+  A Field Ecologist finds fieldwork energising (less
+  stress), but suffers more in admin roles.
+  The modifier appears in blue/red on each card.
+
+MANDATED CARDS (📌 COMPULSORY):
+  Some cards are pinned by the university. They are
+  always included in your turn and cannot be removed.
+  Higher mandated settings = harder game.
+
+EACH WEEK:
+  • Required tasks are auto-selected (you must do them)
+  • Choose additional free-choice tasks up to your limit
+  • Rest cards reduce stress (always in the free pool)
+
+BURNOUT (stress ≥ 100):
+  • 3 weeks locked recovery — no tasks at all
+  • Stress resets to 45, rank is kept
+  • Each burnout costs −15 final points
+
+PROMOTION:
+  • Meet stat thresholds, then click "Apply for Promotion"
+  • Higher rank = more passive stress per week
+  • Promotion is optional — only worth it if sustainable
+
+SLOW AND STEADY:
+  A well-rested Asst. Prof I beats a burnt-out Full Prof.`,
+    btns:[{label:'I have papers to write',cls:''}]
+  });
+}
+
+/* ════════════════════════════════════════════════════
+   INIT
+════════════════════════════════════════════════════ */
+window.addEventListener('load', () => buildSlots());
+</script>
+</body>
+</html>
